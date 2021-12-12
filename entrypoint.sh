@@ -7,7 +7,7 @@ else
 fi
 
 echo "entry point done...echoing2"
-python -c "import os;print(os.environ)" > out1.out
+python -c "import os;print(os.environ)" > out2.out
 echo "ENV"
 echo $ENVFILE
 echo "copyied"
