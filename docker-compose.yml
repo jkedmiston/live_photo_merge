@@ -1,0 +1,45 @@
+version: '3.4'
+
+services:
+    imovie:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: imovie-image
+        container_name: imovie-container
+        restart: always
+        command: python run.py
+        depends_on:
+            - database
+        environment:
+            - DATABASE_URL=postgresql://postgres_user:postgres_password@database:5432
+            - PORT=5000
+            - ENVFILE
+            - EXCLUSIONS
+            - FLASK_DEBUG=1
+
+        stdin_open: true
+        tty: true
+        ports:
+            - "5000:5000"
+
+        volumes:
+            - .:/app
+            - ../dvolume:/vols
+
+    database:
+        environment:
+          POSTGRES_USER: postgres_user
+          POSTGRES_PASSWORD: postgres_password
+        container_name: imovie-database
+        expose:
+          - "5432"
+        image: postgres:11.5
+        ports:
+          - "127.0.0.1:5444:5432"
+        volumes:
+          - persistent_database_postgres:/var/lib/postgresql/data
+
+
+volumes:
+  persistent_database_postgres:
