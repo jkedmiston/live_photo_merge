@@ -1,5 +1,9 @@
+# Overview
+For iPhone users, this app takes a zip file produced from iCloud selection of photos [link](www.icloud.com), and compiles them into a continuous, date sorted `mkv` file. There are 2 flags in the `.env` file, to control specific photo exclusions and control whether to annotate the videos with the filename. 
+
 # Instructions
-Had issue with the opening the `mkv` file produced in the docker container from the main os via `vlc`, this gets around that, see [link](https://vsupalov.com/docker-shared-permissions/).
+Note, I had issue with the opening the `mkv` file produced in the docker container from the main os via `vlc`, this folder structure created by `setup.py` gets around that, see [link](https://vsupalov.com/docker-shared-permissions/).
+
 * `python setup.py` # a one time script, it creates a folder in `../live_photos_volume` to mount as an input volume. This is so that `docker build` doesn't take a long time if a lot of files build up.
 * `docker-compose build --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)
 * Set up the `.env` file, `cp env.sample .env` and edit accordingly (see `env.sample` for instructions). 
