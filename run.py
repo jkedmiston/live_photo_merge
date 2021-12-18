@@ -95,10 +95,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('')
     annotations = int(os.environ["ANNOTATIONS"])
     while 1:
+        print("scanning for new zip files")
         zips = glob.glob('/home/videos/*.zip')
         for k, z in enumerate(zips):
             # unzip the file, and process all the videos inside it
             zipf = os.path.basename(z).split('.')[0].replace(' ', '_')
+
+            # delete any existing files
             base_file_dir = f"/home/videos/tmp_{zipf}"
             if os.path.isdir(base_file_dir):
                 os.system(f"rm -rf {base_file_dir}")
@@ -131,6 +134,7 @@ if __name__ == "__main__":
             dh = remove_excluded_files_from_df(
                 file_dir, dg, annotations=annotations)
             files = dh["final_fname"].values
+            # I don't know the exact upper limit here, set to 500 for now.
             l, u = 0, 500
             if len(files) > 500:
                 raise Exception("Too many videos for mkvmerge")
@@ -140,7 +144,6 @@ if __name__ == "__main__":
                 os.path.dirname(base_file_dir), f"out_{zipf}.mkv")
             cmd = f"mkvmerge -o {mkvfile} %s" % (r' \+ '.join(files[l:u]))
             ou = os.system(cmd)  # noqa
-            # if ou != 0:
-            #   raise Exception("error on mkvmerge, exit code %s" % ou)
+            print(f"wrote {mkfile}")
 
         time.sleep(5)
