@@ -144,6 +144,6 @@ if __name__ == "__main__":
                 os.path.dirname(base_file_dir), f"out_{zipf}.mkv")
             cmd = f"mkvmerge -o {mkvfile} %s" % (r' \+ '.join(files[l:u]))
             ou = os.system(cmd)  # noqa
-            print(f"wrote {mkfile}")
+            print(f"wrote {mkvfile}")
 
         time.sleep(5)
