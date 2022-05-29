@@ -12,6 +12,8 @@ services:
         environment:
             - EXCLUSIONS
             - ANNOTATIONS
+            - RESCALE
+            - MAX_DURATION
 
         stdin_open: true
         tty: true

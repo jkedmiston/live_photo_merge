@@ -4,12 +4,13 @@ import ffmpeg
 import pandas as pd
 import glob
 import time
+import cv2
 
 
 def assemble_movie_df(df, file_dir, annotations=True):
     """
     Converts the MOV files into mp4, plus optionally adding the annotation
-    in the middle of the movie with the filename, so that it 
+    in the middle of the movie with the filename, so that it
     can be excluded in final runs (see .env file)
 
     The writing of paths to files in files_to_combine is for debugging
@@ -17,7 +18,7 @@ def assemble_movie_df(df, file_dir, annotations=True):
     fname = "files_to_combine.txt"
     files = []
     with open(fname, "w") as f:
-        for kk, row in df.iterrows():
+        for kk, (idx, row) in enumerate(df.iterrows()):
             base = os.path.basename(row["fname"])
             if annotations:
                 final_fname = f"{file_dir}/out/{base.replace('.MOV', '_ac.mp4')}"
@@ -34,10 +35,50 @@ def assemble_movie_df(df, file_dir, annotations=True):
             else:
                 if not os.path.isdir(os.path.dirname(final_fname)):
                     os.makedirs(os.path.dirname(final_fname))
+
+                # downscale
+                cap = cv2.VideoCapture(row["fname"])
+                # float `width`
+
+                width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                if kk == 0:
+                    # save initial height, width and map all videos on that
+                    width0 = width  # initial height, width
+                    height0 = height
+
+                print("width, height", width, height)
+                if os.path.basename(row["fname"]) in os.environ["RESCALE"].split(','):
+                    dim = int(width0), int(height0)
+                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                    fps = cap.get(cv2.CAP_PROP_FPS)
+                    vwrit = "video.avi"
+                    video = cv2.VideoWriter(vwrit, fourcc, fps, dim)
+                    while(True):
+                        ret, frame = cap.read()
+                        if not ret:
+                            break
+                        resized = cv2.resize(
+                            frame, dim, interpolation=cv2.INTER_AREA)
+                        video.write(resized)
+                        pass
+                    cv2.destroyAllWindows()
+                    video.release()
+                    # split out the sound track
+                    os.system(
+                        f'ffmpeg -y -i {row["fname"]} -f mp3 -ab 192000 sound.mp3')
+                    # add the sound track to the rescaled video
+                    recombine_cmd = f'ffmpeg -y -i video.avi -i sound.mp3 -c copy -map 0:v:0 -map 1:a:0 video2.avi'
+                    os.system(recombine_cmd)
+                    # move the combined video to the final location,
+                    # so that we continue processing as normal
+                    cmd = f"ffmpeg -i video2.avi -c:v copy -c:a copy -y {row['fname']}"
+                    os.system(cmd)
+                print(ant)
                 os.system(ant)
             f.write(f"""file {final_fname}\n""")
             files.append(final_fname)
-            df.loc[kk, "final_fname"] = final_fname
+            df.loc[idx, "final_fname"] = final_fname
 
     return fname, files
 
@@ -45,7 +86,7 @@ def assemble_movie_df(df, file_dir, annotations=True):
 def remove_excluded_files_from_df(file_dir, dg, annotations):
     """
     Look in the environ variable EXCLUSIONS (a comma separated list of ints)
-    for exclusion list and remove them from the dataframe. 
+    for exclusion list and remove them from the dataframe.
     """
     exclusion_list = os.environ["EXCLUSIONS"].split(',')
     exclusions = [f"{file_dir}/out/IMG_%s.mp4" %
@@ -64,7 +105,8 @@ def remove_excluded_files_from_df(file_dir, dg, annotations):
 
 
 def generate_mov_df(file_dir):
-    movs = glob.glob(os.path.join(file_dir, '*.MOV'))
+    movs = glob.glob(os.path.join(file_dir, '*.MOV')) + \
+        glob.glob(os.path.join(file_dir, '*.MP4'))
     mov_df = []
     for m in movs[:]:
         out = ffmpeg.probe(m)
@@ -126,9 +168,14 @@ if __name__ == "__main__":
                 raise Exception(f"ou {ou}")
 
             df = generate_mov_df(file_dir)
+            maxd = int(os.environ.get("MAX_DURATION", 5))
             # filter for live photos or short videos in the portrait format
-            dg = df[(df["nchannels"] == 1) & (df["rotation"] == 90) &
-                    (df["duration"] > 0) & (df["duration"] < 5)].copy()
+            dg = df[(df["nchannels"].isin([2])) & (df["rotation"] == 90) &
+                    (df["duration"] > 0) & (df["duration"] < maxd)].copy()
+            # this was done for a one off procedure
+            dg = df[(df["nchannels"].isin([2])) & (df["rotation"].isin([0, 90])) & (
+                df["duration"] > 0) & (df["duration"] < maxd)].copy()
+
             _, _ = assemble_movie_df(dg, file_dir, annotations=annotations)
 
             dh = remove_excluded_files_from_df(
@@ -144,6 +191,6 @@ if __name__ == "__main__":
                 os.path.dirname(base_file_dir), f"out_{zipf}.mkv")
             cmd = f"mkvmerge -o {mkvfile} %s" % (r' \+ '.join(files[l:u]))
             ou = os.system(cmd)  # noqa
-            print(f"wrote {mkfile}")
+            print(f"wrote {mkvfile}")
 
         time.sleep(5)

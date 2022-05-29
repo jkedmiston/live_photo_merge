@@ -11,3 +11,7 @@ Note, I had issue with the opening the `mkv` file produced in the docker contain
 * Now, moving a `zip` archive into `../live_photos_volume` will trigger the processing pipeline. The output of the pipeline a file depending on the name of the zip file. E.g. if the zipfile is called myzipfile.zip, the output file produced is called `out_myzipfile.mkv`. It can be opened with a program like `vlc` to view.
 * The operation will ingest the source `zip` file and delete it. So if you want to keep a copy, you should use `cp` to move it over. 
 * You'll need to stop the container if you change a parameter in the `.env` file. For example, for a final output, changing `ANNOTATIONS` from `1` to `0` would need to be stopped and restarted.
+
+# Debugging
+Try:
+* `docker-compose run --rm imovie python -i run.py`
